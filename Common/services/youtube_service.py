@@ -359,6 +359,90 @@ class YouTubeAPIService:
         channel_id = self.extract_channel_id(channel_input)
         return self.get_channel_info(channel_id)
 
+    def get_channel_playlists(self, channel_input: str, max_results: int = 50) -> List[Dict[str, Any]]:
+        """
+        Get playlists for a YouTube channel.
+
+        Args:
+            channel_input: YouTube channel ID or URL
+            max_results: Maximum number of playlists to return (1-50)
+
+        Returns:
+            List of playlist information
+        """
+        if not 1 <= max_results <= 50:
+            raise ValueError("max_results must be between 1 and 50")
+
+        channel_id = self.extract_channel_id(channel_input)
+
+        params = {
+            'part': 'snippet,contentDetails,status',
+            'channelId': channel_id,
+            'maxResults': max_results
+        }
+
+        response = self._make_request('playlists', params)
+
+        playlists = []
+        for item in response.get('items', []):
+            playlist = {
+                'playlist_id': item['id'],
+                'title': item['snippet']['title'],
+                'description': item['snippet']['description'],
+                'published_at': item['snippet']['publishedAt'],
+                'channel_title': item['snippet']['channelTitle'],
+                'channel_id': item['snippet']['channelId'],
+                'video_count': item['contentDetails']['itemCount'],
+                'status': item['status']['privacyStatus'],
+                'thumbnail_url': item['snippet']['thumbnails'].get('default', {}).get('url')
+            }
+            playlists.append(playlist)
+
+        return playlists
+
+    def get_playlist_videos_full(self, playlist_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all videos from a YouTube playlist with automatic pagination.
+
+        Args:
+            playlist_id: YouTube playlist ID
+
+        Returns:
+            List of all playlist video items
+        """
+        all_videos = []
+        next_page_token = None
+
+        while True:
+            params = {
+                'part': 'snippet',
+                'playlistId': playlist_id,
+                'maxResults': 50  # Maximum allowed per request
+            }
+
+            if next_page_token:
+                params['pageToken'] = next_page_token
+
+            response = self._make_request('playlistItems', params)
+
+            for item in response.get('items', []):
+                video = {
+                    'video_id': item['snippet']['resourceId']['videoId'],
+                    'title': item['snippet']['title'],
+                    'description': item['snippet']['description'],
+                    'channel_title': item['snippet']['channelTitle'],
+                    'published_at': item['snippet']['publishedAt'],
+                    'thumbnail_url': item['snippet']['thumbnails'].get('default', {}).get('url'),
+                    'position': item['snippet']['position']
+                }
+                all_videos.append(video)
+
+            next_page_token = response.get('nextPageToken')
+            if not next_page_token:
+                break
+
+        return all_videos
+
 
 # Global YouTube service instance - lazy initialization
 class _YouTubeServiceLazy:
@@ -437,3 +521,30 @@ def get_youtube_channel_info(channel_input: str) -> Dict[str, Any]:
         Channel information dictionary
     """
     return youtube_service.get_channel_details(channel_input)
+
+
+def get_youtube_channel_playlists(channel_input: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    """
+    Convenience function to get YouTube channel playlists.
+
+    Args:
+        channel_input: YouTube channel ID or URL
+        max_results: Maximum number of playlists to return
+
+    Returns:
+        List of playlist information
+    """
+    return youtube_service.get_channel_playlists(channel_input, max_results)
+
+
+def get_youtube_playlist_videos_full(playlist_id: str) -> List[Dict[str, Any]]:
+    """
+    Convenience function to get all videos from a YouTube playlist with pagination.
+
+    Args:
+        playlist_id: YouTube playlist ID
+
+    Returns:
+        List of all playlist video items
+    """
+    return youtube_service.get_playlist_videos_full(playlist_id)
