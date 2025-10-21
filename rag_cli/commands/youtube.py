@@ -266,6 +266,69 @@ def register_youtube_commands(cli):
             click.echo("4. Ensure you have enabled YouTube Data API v3 in Google Cloud Console")
             click.echo("5. Check your API quota hasn't been exceeded")
             sys.exit(1)
+    @youtube.command()
+    @click.argument('video_input', required=True)
+    @click.option('--language', '-l', help='Language code for transcription (auto-detect if not specified)')
+    @click.option('--json', is_flag=True, help='Output transcription as JSON')
+    @click.option('--text', is_flag=True, help='Output transcription as plain text (one line per segment)')
+    def transcribe(video_input: str, language: str, json: bool, text: bool):
+        """Transcribe a YouTube video to text using YouTube Transcript API first, then Whisper as fallback."""
+        try:
+            # Perform transcription
+            from Common.services.transcription_service import transcribe_youtube_video
+            result = transcribe_youtube_video(video_input, language)
+
+            if json:
+                click.echo(json_module.dumps(result, indent=2, ensure_ascii=False))
+            elif text:
+                # Output as plain text - one line per segment
+                segments = result.get('segments', [])
+                for segment in segments:
+                    text_content = segment.get('text', '').strip()
+                    if text_content:
+                        click.echo(text_content)
+            else:
+                # Display results
+                click.echo("📝 Transcription Results:")
+                click.echo("=" * 50)
+                click.echo(f"Video ID: {result['video_id']}")
+                click.echo(f"Video URL: {result['video_url']}")
+                click.echo(f"Language: {result.get('language', 'auto-detected')}")
+                click.echo(f"Source: {result.get('source', 'unknown')}")
+                click.echo()
+
+                # Show transcript text
+                click.echo("📄 Transcript:")
+                click.echo("-" * 30)
+                click.echo(result['text'])
+                click.echo()
+
+                # Show segments if available
+                segments = result.get('segments', [])
+                if segments and len(segments) > 0:
+                    click.echo("⏰ Segments with timestamps:")
+                    click.echo("-" * 30)
+                    for i, segment in enumerate(segments[:5], 1):  # Show first 5 segments
+                        start = segment.get('start', 0)
+                        text = segment.get('text', '').strip()
+                        click.echo(f"  {i}. [{start:.1f}s] {text}")
+                    if len(segments) > 5:
+                        click.echo(f"  ... and {len(segments) - 5} more segments")
+                    click.echo()
+
+
+                click.echo("✅ Transcription completed successfully!")
+
+        except Exception as e:
+            click.echo(f"❌ Transcription failed: {e}", err=True)
+            click.echo()
+            click.echo("🔧 Troubleshooting tips:")
+            click.echo("1. Check if the video has captions/transcripts available")
+            click.echo("2. Verify the video URL/ID is correct")
+            click.echo("3. Try without specifying language for auto-detection")
+            click.echo("4. For videos without captions, Whisper will be used (slower)")
+            click.echo("5. Ensure you have sufficient disk space for temporary files")
+            sys.exit(1)
 
     @youtube.command()
     @click.argument('channel_input', required=True)

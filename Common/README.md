@@ -57,6 +57,45 @@ from Common.services.youtube_service import (
     get_youtube_channel_playlists,
     get_youtube_playlist_videos_full,
     get_youtube_channel_videos_full
+### Audio Transcription Service
+
+Moduł zawiera serwis do transkrypcji filmów YouTube na tekst z inteligentną strategią:
+
+**Strategia priorytetowa:**
+1. **YouTube Transcript API** - szybki, darmowy, dokładny dla filmów z napisami
+2. **OpenAI Whisper** - fallback dla filmów bez napisów
+
+```python
+from Common.services.transcription_service import transcribe_youtube_video
+
+# Transkrybuj film YouTube (automatycznie wybiera najlepszą metodę)
+result = transcribe_youtube_video("VIDEO_ID_OR_URL", language="en")
+
+print(result['text'])        # Pełny tekst transkrypcji
+print(result['language'])    # Wykryty język
+print(result['source'])      # Źródło: 'youtube_transcript_api' lub 'whisper'
+print(result['segments'])    # Segmenty z timestampami
+```
+
+**CLI - Komenda transkrypcji:**
+
+```bash
+# Podstawowa transkrypcja
+rag youtube transcribe "VIDEO_ID"
+
+# Z określeniem języka
+rag youtube transcribe "VIDEO_ID" --language en
+
+# Wyjście JSON
+rag youtube transcribe "VIDEO_ID" --json
+
+# Czysty tekst (jedna linia na segment)
+rag youtube transcribe "VIDEO_ID" --text
+
+# Piping do innych narzędzi
+rag youtube transcribe "VIDEO_ID" --text | head -10
+rag youtube transcribe "VIDEO_ID" --text > lyrics.txt
+```
 )
 
 # Wyszukaj filmy

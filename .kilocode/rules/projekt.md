@@ -35,10 +35,26 @@ rag-application/
 ### Główne komponenty
 
 #### 1. ConfigService (`Common/services/config_service.py`)
+#### 3. TranscriptionService (`Common/services/transcription_service.py`)
+- **Inteligentna transkrypcja filmów YouTube** z strategią priorytetową:
+  - **YouTube Transcript API** - pierwsza kolejność (szybki, darmowy, dokładny)
+  - **OpenAI Whisper** - fallback dla filmów bez napisów
+- **Automatyczne pobieranie audio** z yt-dlp (tylko gdy potrzebne)
+- **Wsparcie dla wielu języków** z auto-detecją
+- **Segmentacja transkrypcji** z timestampami
+- **Lazy loading** modeli dla optymalizacji pamięci
+
+#### 4. CLI Interface (`rag_cli/`)
 - **Singleton pattern** zapewnia pojedynczą instancję konfiguracji
 - **Pydantic Settings** do walidacji i typowania konfiguracji
 - **Automatyczne generowanie SECRET_KEY** gdy nie jest podany
 - **Wsparcie dla .env plików** i zmiennych środowiskowych
+  - `rag youtube info <video>` - szczegółowe informacje o filmie
+  - `rag youtube channel <channel>` - informacje o kanale
+  - `rag youtube playlists <channel>` - lista playlist kanału
+  - `rag youtube playlist <playlist>` - wszystkie filmy z playlisty
+  - `rag youtube videos <channel>` - wszystkie filmy kanału
+  - `rag youtube transcribe <video>` - transkrypcja filmu na tekst (YouTube API + Whisper fallback)
 - **Lazy initialization** dla optymalizacji wydajności
 
 #### 2. YouTubeAPIService (`Common/services/youtube_service.py`)
@@ -108,6 +124,32 @@ rag-application/
 - **Mocking** dla zewnętrznych zależności
 - **Integration tests** dla kompleksowych workflow
 - **Error scenarios** testing
+# Pobierz informacje o filmie
+python3 rag_cli.py youtube info "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+# Pobierz informacje o kanale
+python3 rag_cli.py youtube channel "UC1234567890abcdef"
+
+# Lista playlist kanału
+python3 rag_cli.py youtube playlists "UC1234567890abcdef"
+
+# Wszystkie filmy z playlisty
+python3 rag_cli.py youtube playlist "PL1234567890abcdef"
+
+# Wszystkie filmy kanału
+python3 rag_cli.py youtube videos "UC1234567890abcdef"
+
+# Transkrypcja filmu (YouTube API lub Whisper)
+python3 rag_cli.py youtube transcribe "VIDEO_ID" --language en
+
+# Czysty tekst (jedna linia na segment)
+python3 rag_cli.py youtube transcribe "VIDEO_ID" --text
+
+# JSON output
+python3 rag_cli.py youtube transcribe "VIDEO_ID" --json
+
+# Wszystkie polecenia wspierają format JSON z opcją --json
+python3 rag_cli.py youtube info "VIDEO_ID" --json
 
 ## Uruchamianie
 
@@ -118,6 +160,18 @@ pip install -r requirements.txt
 
 ### Konfiguracja
 ```bash
+### TranscriptionService
+```python
+from Common.services.transcription_service import transcribe_youtube_video
+
+# Transkrybuj film YouTube (automatycznie wybiera najlepszą metodę)
+result = transcribe_youtube_video("VIDEO_ID_OR_URL", language="en")
+
+print(result['text'])  # Pełny tekst transkrypcji
+print(result['language'])  # Wykryty język
+print(result['source'])  # Źródło: 'youtube_transcript_api' lub 'whisper'
+print(result['segments'])  # Segmenty z timestampami
+```
 # Skopiuj przykładowe pliki konfiguracyjne
 cp .env.example .env
 cp .env.youtube.example .env.youtube
