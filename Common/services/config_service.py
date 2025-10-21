@@ -6,6 +6,7 @@ with proper validation, type safety, and error handling.
 """
 
 import os
+import secrets
 from typing import Optional, Dict, Any
 from pathlib import Path
 
@@ -43,7 +44,7 @@ class AppSettings(BaseSettings):
     log_file: Optional[str] = Field(default=None, alias="LOG_FILE")
 
     # Security settings
-    secret_key: str = Field(alias="SECRET_KEY", min_length=32, default=...)
+    secret_key: str = Field(alias="SECRET_KEY", min_length=32, default_factory=lambda: secrets.token_hex(32))
 
     model_config = {
         "env_file": ".env",
