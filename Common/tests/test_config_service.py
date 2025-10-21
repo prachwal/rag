@@ -176,6 +176,16 @@ class TestConfigService:
             assert "timeout" in api_config
             assert api_config["timeout"] == 30
 
+    def test_get_youtube_config(self):
+        """Test get_youtube_config method."""
+        with patch.dict(os.environ, {"SECRET_KEY": "t" * 32}):
+            service = ConfigService()
+            youtube_config = service.get_youtube_config()
+            assert isinstance(youtube_config, dict)
+            assert "api_key" in youtube_config
+            assert "timeout" in youtube_config
+            assert youtube_config["timeout"] == 30
+
     def test_reload_config(self):
         """Test reload_config method."""
         with patch.dict(os.environ, {"SECRET_KEY": "m" * 32}):
@@ -387,3 +397,7 @@ class TestIntegration:
             api_config = service.get_api_config()
             assert api_config["api_key"] == "test_key"
             assert api_config["timeout"] == 60
+
+            youtube_config = service.get_youtube_config()
+            assert youtube_config["api_key"] is None  # Not set in test
+            assert youtube_config["timeout"] == 30

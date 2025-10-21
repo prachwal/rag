@@ -34,6 +34,10 @@ class AppSettings(BaseSettings):
     api_key: Optional[str] = Field(default=None, alias="API_KEY")
     api_timeout: PositiveInt = Field(default=30, alias="API_TIMEOUT")
 
+    # YouTube API settings
+    youtube_api_key: Optional[str] = Field(default=None, alias="YOUTUBE_API_KEY")
+    youtube_api_timeout: PositiveInt = Field(default=30, alias="YOUTUBE_API_TIMEOUT")
+
     # Logging settings
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_file: Optional[str] = Field(default=None, alias="LOG_FILE")
@@ -122,6 +126,13 @@ class ConfigService:
         return {
             "api_key": self.settings.api_key,
             "timeout": self.settings.api_timeout,
+        }
+
+    def get_youtube_config(self) -> Dict[str, Any]:
+        """Get YouTube API configuration."""
+        return {
+            "api_key": self.settings.youtube_api_key,
+            "timeout": self.settings.youtube_api_timeout,
         }
 
     def reload_config(self) -> None:
