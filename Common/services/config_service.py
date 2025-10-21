@@ -44,6 +44,10 @@ class AppSettings(BaseSettings):
     huggingface_token: Optional[str] = Field(default=None, alias="HUGGINGFACE_TOKEN")
     huggingface_api_timeout: PositiveInt = Field(default=30, alias="HUGGINGFACE_API_TIMEOUT")
 
+    # OpenRouter API settings
+    openrouter_api_key: Optional[str] = Field(default=None, alias="OPENROUTER_API_KEY")
+    openrouter_api_timeout: PositiveInt = Field(default=30, alias="OPENROUTER_API_TIMEOUT")
+
     # Embedding model settings
     embedding_model: str = Field(default="Voicelab/sbert-large-cased-pl", alias="EMBEDDING_MODEL")
     
@@ -167,6 +171,13 @@ class ConfigService:
             "timeout": self.settings.huggingface_api_timeout,
         }
 
+    def get_openrouter_config(self) -> Dict[str, Any]:
+        """Get OpenRouter API configuration."""
+        return {
+            "api_key": self.settings.openrouter_api_key,
+            "timeout": self.settings.openrouter_api_timeout,
+        }
+
     def get_embedding_config(self) -> Dict[str, Any]:
         """Get embedding model configuration."""
         return {
@@ -179,9 +190,8 @@ class ConfigService:
     @classmethod
     def _reset_instance(cls) -> None:
         """Reset the singleton instance. Used for testing."""
-        global _config_service_instance
-        _config_service_instance = None
-        # Also reset the lazy wrapper
+        cls._instance = None
+        cls._settings = None
         global config_service
         config_service = _ConfigServiceLazy()
 
