@@ -266,4 +266,53 @@ def register_youtube_commands(cli):
             click.echo("4. Ensure you have enabled YouTube Data API v3 in Google Cloud Console")
             click.echo("5. Check your API quota hasn't been exceeded")
             sys.exit(1)
+
+    @youtube.command()
+    @click.argument('channel_input', required=True)
+    @click.option('--json', is_flag=True, help='Output channel videos as JSON')
+    def videos(channel_input: str, json: bool):
+        """Get all videos uploaded by a YouTube channel."""
+        try:
+            # Check if YouTube API key is configured
+            youtube_config = config_service.get_youtube_config()
+            if not youtube_config.get('api_key'):
+                click.echo("Error: YouTube API key not configured.", err=True)
+                click.echo("Please set YOUTUBE_API_KEY in your environment variables or .env file.", err=True)
+                click.echo("You can use the .env.youtube template file as a reference.", err=True)
+                sys.exit(1)
+
+            # Get all channel videos
+            from Common.services.youtube_service import get_youtube_channel_videos_full
+            videos = get_youtube_channel_videos_full(channel_input)
+
+            if json:
+                click.echo(json_module.dumps(videos, indent=2, ensure_ascii=False))
+            else:
+                if not videos:
+                    click.echo(f"No videos found for channel: {channel_input}")
+                    return
+
+                click.echo(f"All videos from channel: {channel_input}")
+                click.echo("=" * 60)
+
+                for i, video in enumerate(videos, 1):
+                    click.echo(f"{i}. {video['title']}")
+                    click.echo(f"   Video ID: {video['video_id']}")
+                    click.echo(f"   Position: {video['position']}")
+                    click.echo(f"   Published: {video['published_at']}")
+                    click.echo()
+
+                click.echo(f"✅ Found {len(videos)} video(s) from channel")
+
+        except Exception as e:
+            click.echo(f"❌ Failed to get channel videos: {e}", err=True)
+            click.echo()
+            click.echo("Troubleshooting tips:")
+            click.echo("1. Check your internet connection")
+            click.echo("2. Verify the channel ID or URL is correct")
+            click.echo("3. Verify YOUTUBE_API_KEY is correct")
+            click.echo("4. Ensure you have enabled YouTube Data API v3 in Google Cloud Console")
+            click.echo("5. Check your API quota hasn't been exceeded")
+            sys.exit(1)
+
     return youtube

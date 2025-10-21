@@ -443,6 +443,41 @@ class YouTubeAPIService:
 
         return all_videos
 
+    def get_channel_uploads_playlist_id(self, channel_id: str) -> str:
+        """
+        Get the uploads playlist ID for a channel.
+
+        The uploads playlist contains all videos uploaded by the channel.
+        The ID is constructed as 'UU' + last 22 characters of channel ID.
+
+        Args:
+            channel_id: YouTube channel ID (must start with 'UC')
+
+        Returns:
+            Uploads playlist ID for the channel
+        """
+        if not channel_id.startswith('UC'):
+            raise ValueError("Channel ID must start with 'UC'")
+        if len(channel_id) != 24:
+            raise ValueError("Channel ID must be 24 characters long")
+
+        # Replace 'UC' with 'UU' to get uploads playlist ID
+        return 'UU' + channel_id[2:]
+
+    def get_channel_videos_full(self, channel_input: str) -> List[Dict[str, Any]]:
+        """
+        Get all videos uploaded by a YouTube channel.
+
+        Args:
+            channel_input: YouTube channel ID or URL
+
+        Returns:
+            List of all videos uploaded by the channel
+        """
+        channel_id = self.extract_channel_id(channel_input)
+        uploads_playlist_id = self.get_channel_uploads_playlist_id(channel_id)
+        return self.get_playlist_videos_full(uploads_playlist_id)
+
 
 # Global YouTube service instance - lazy initialization
 class _YouTubeServiceLazy:
@@ -548,3 +583,16 @@ def get_youtube_playlist_videos_full(playlist_id: str) -> List[Dict[str, Any]]:
         List of all playlist video items
     """
     return youtube_service.get_playlist_videos_full(playlist_id)
+
+
+def get_youtube_channel_videos_full(channel_input: str) -> List[Dict[str, Any]]:
+    """
+    Convenience function to get all videos uploaded by a YouTube channel.
+
+    Args:
+        channel_input: YouTube channel ID or URL
+
+    Returns:
+        List of all videos uploaded by the channel
+    """
+    return youtube_service.get_channel_videos_full(channel_input)
