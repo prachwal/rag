@@ -16,7 +16,13 @@ rag-application/
 │   └── tests/                       # Testy jednostkowe
 │       ├── test_config_service.py   # Testy konfiguracji
 │       └── test_youtube_service.py  # Testy YouTube API
-├── rag_cli.py                       # Interfejs wiersza poleceń
+├── rag_cli/                         # Interfejs wiersza poleceń
+│   ├── cli.py                       # Główny moduł CLI
+│   └── commands/                    # Polecenia CLI
+│       ├── youtube.py               # Polecenia YouTube
+│       ├── config.py                # Polecenia konfiguracji
+│       └── help.py                  # Polecenia pomocy
+├── rag_cli.py                       # Punkt wejścia aplikacji
 ├── .env                             # Konfiguracja główna
 ├── .env.youtube                     # Konfiguracja YouTube API
 ├── pyproject.toml                   # Konfiguracja projektu Python
@@ -41,15 +47,24 @@ rag-application/
 - **Pobieranie szczegółów filmów** (statystyki, tagi, czas trwania)
 - **Informacje o kanałach** (subskrybenci, liczba filmów)
 - **Wyszukiwanie najnowszych filmów** z filtrem czasowym
+- **Playlist management** - pobieranie playlist kanału i ich zawartości z paginacją
+- **Channel videos** - pobieranie wszystkich filmów kanału z automatyczną paginacją
+- **Video/Channel ID extraction** - ekstrakcja ID z różnych formatów URL YouTube
 - **Robust error handling** (quota exceeded, network failures)
 - **Retry strategy** z wykładniczym backoff
 
-#### 3. CLI Interface (`rag_cli.py`)
+#### 3. CLI Interface (`rag_cli/`)
 - **Click-based framework** dla profesjonalnego CLI
 - **Polecenia:**
   - `rag help` - pomoc i informacje o dostępnych komendach
   - `rag config` - wyświetlanie bieżącej konfiguracji
   - `rag youtube test` - testowanie łączności z YouTube API
+  - `rag youtube info <video>` - szczegółowe informacje o filmie
+  - `rag youtube channel <channel>` - informacje o kanale
+  - `rag youtube playlists <channel>` - lista playlist kanału
+  - `rag youtube playlist <playlist>` - wszystkie filmy z playlisty
+  - `rag youtube videos <channel>` - wszystkie filmy kanału
+- **JSON output support** dla wszystkich poleceń YouTube
 - **Error handling** z przyjaznymi komunikatami
 
 ## Technologie
@@ -121,6 +136,24 @@ python3 rag_cli.py config
 
 # Testuj YouTube API
 python3 rag_cli.py youtube test --query "python tutorial"
+
+# Pobierz informacje o filmie
+python3 rag_cli.py youtube info "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+# Pobierz informacje o kanale
+python3 rag_cli.py youtube channel "UC1234567890abcdef"
+
+# Lista playlist kanału
+python3 rag_cli.py youtube playlists "UC1234567890abcdef"
+
+# Wszystkie filmy z playlisty
+python3 rag_cli.py youtube playlist "PL1234567890abcdef"
+
+# Wszystkie filmy kanału
+python3 rag_cli.py youtube videos "UC1234567890abcdef"
+
+# Wszystkie polecenia wspierają format JSON z opcją --json
+python3 rag_cli.py youtube info "VIDEO_ID" --json
 ```
 
 ### Testowanie
@@ -150,13 +183,32 @@ youtube_config = config_service.get_youtube_config()
 
 ### YouTubeAPIService
 ```python
-from Common.services.youtube_service import search_youtube_videos
+from Common.services.youtube_service import (
+    search_youtube_videos,
+    get_youtube_video_info,
+    get_youtube_channel_info,
+    get_youtube_channel_playlists,
+    get_youtube_playlist_videos_full,
+    get_youtube_channel_videos_full
+)
 
 # Wyszukaj filmy
 results = search_youtube_videos("python tutorial", max_results=10)
 
-# Pobierz szczegóły filmów
-details = get_youtube_video_details(['video_id_1', 'video_id_2'])
+# Pobierz informacje o pojedynczym filmie
+video_info = get_youtube_video_info("VIDEO_ID_OR_URL")
+
+# Pobierz informacje o kanale
+channel_info = get_youtube_channel_info("CHANNEL_ID_OR_URL")
+
+# Lista playlist kanału
+playlists = get_youtube_channel_playlists("CHANNEL_ID", max_results=20)
+
+# Wszystkie filmy z playlisty (z paginacją)
+playlist_videos = get_youtube_playlist_videos_full("PLAYLIST_ID")
+
+# Wszystkie filmy kanału (z paginacją)
+channel_videos = get_youtube_channel_videos_full("CHANNEL_ID")
 ```
 
 ## Bezpieczeństwo

@@ -45,6 +45,39 @@ api_config = config_service.get_api_config()
 is_debug = config_service.is_debug_mode()
 ```
 
+### YouTube API Service
+
+Moduł zawiera kompleksowy serwis do integracji z YouTube Data API v3:
+
+```python
+from Common.services.youtube_service import (
+    search_youtube_videos,
+    get_youtube_video_info,
+    get_youtube_channel_info,
+    get_youtube_channel_playlists,
+    get_youtube_playlist_videos_full,
+    get_youtube_channel_videos_full
+)
+
+# Wyszukaj filmy
+videos = search_youtube_videos("python tutorial", max_results=10)
+
+# Pobierz informacje o pojedynczym filmie
+video_info = get_youtube_video_info("VIDEO_ID_OR_URL")
+
+# Pobierz informacje o kanale
+channel_info = get_youtube_channel_info("CHANNEL_ID_OR_URL")
+
+# Lista playlist kanału
+playlists = get_youtube_channel_playlists("CHANNEL_ID", max_results=20)
+
+# Wszystkie filmy z playlisty (z paginacją)
+playlist_videos = get_youtube_playlist_videos_full("PLAYLIST_ID")
+
+# Wszystkie filmy kanału (z paginacją)
+channel_videos = get_youtube_channel_videos_full("CHANNEL_ID")
+```
+
 ### Przykład użycia w serwisie
 
 ```python
@@ -101,6 +134,10 @@ DATABASE_URL=postgresql://localhost:5432/rag_db
 API_KEY=your_api_key_here
 API_TIMEOUT=30
 
+# YouTube API Settings
+YOUTUBE_API_KEY=your_youtube_api_key_here
+YOUTUBE_API_TIMEOUT=30
+
 # Logging Settings
 LOG_LEVEL=INFO
 LOG_FILE=logs/app.log
@@ -125,4 +162,6 @@ pytest --cov=Common Common/tests/
 
 # Uruchom tylko testy konfiguracji
 pytest Common/tests/test_config_service.py -v
-```
+
+# Uruchom tylko testy YouTube API
+pytest Common/tests/test_youtube_service.py -v
