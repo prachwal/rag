@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     # Import command modules
-    from .commands import help, config, youtube, neon
+    from .commands import help, config, youtube, neon, huggingface
 except ImportError as e:
     click.echo(f"Error importing command modules: {e}", err=True)
     click.echo("Make sure you're running from the project root directory.", err=True)
@@ -36,6 +36,7 @@ def main():
         config.register_config_command(cli)
         youtube.register_youtube_commands(cli)
         cli.add_command(neon.neon)
+        cli.add_command(huggingface.huggingface)
 
         # Run the CLI
         cli()

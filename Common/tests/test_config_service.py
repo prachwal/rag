@@ -189,6 +189,16 @@ class TestConfigService:
             assert "timeout" in youtube_config
             assert youtube_config["timeout"] == 30
 
+    def test_get_huggingface_config(self):
+        """Test get_huggingface_config method."""
+        with patch.dict(os.environ, {"SECRET_KEY": "u" * 32}):
+            service = ConfigService()
+            huggingface_config = service.get_huggingface_config()
+            assert isinstance(huggingface_config, dict)
+            assert "token" in huggingface_config
+            assert "timeout" in huggingface_config
+            assert huggingface_config["timeout"] == 30
+
     def test_reload_config(self):
         """Test reload_config method."""
         with patch.dict(os.environ, {"SECRET_KEY": "m" * 32}):

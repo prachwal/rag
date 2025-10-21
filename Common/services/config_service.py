@@ -40,6 +40,18 @@ class AppSettings(BaseSettings):
     youtube_api_key: Optional[str] = Field(default=None, alias="YOUTUBE_API_KEY")
     youtube_api_timeout: PositiveInt = Field(default=30, alias="YOUTUBE_API_TIMEOUT")
 
+    # HuggingFace API settings
+    huggingface_token: Optional[str] = Field(default=None, alias="HUGGINGFACE_TOKEN")
+    huggingface_api_timeout: PositiveInt = Field(default=30, alias="HUGGINGFACE_API_TIMEOUT")
+
+    # Embedding model settings
+    embedding_model: str = Field(default="Voicelab/sbert-large-cased-pl", alias="EMBEDDING_MODEL")
+    
+    # Model memory and performance settings
+    max_model_memory_gb: int = Field(default=4, alias="MAX_MODEL_MEMORY_GB")
+    enable_model_quantization: bool = Field(default=False, alias="ENABLE_MODEL_QUANTIZATION")
+    embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
+    
     # Logging settings
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_file: Optional[str] = Field(default=None, alias="LOG_FILE")
@@ -148,7 +160,18 @@ class ConfigService:
             "api_key": self.settings.youtube_api_key,
             "timeout": self.settings.youtube_api_timeout,
         }
+    def get_huggingface_config(self) -> Dict[str, Any]:
+        """Get HuggingFace API configuration."""
+        return {
+            "token": self.settings.huggingface_token,
+            "timeout": self.settings.huggingface_api_timeout,
+        }
 
+    def get_embedding_config(self) -> Dict[str, Any]:
+        """Get embedding model configuration."""
+        return {
+            "model": self.settings.embedding_model,
+        }
     def reload_config(self) -> None:
         """Reload configuration from .env file and environment variables."""
         self._load_configuration()

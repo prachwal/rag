@@ -17,12 +17,16 @@ RAG Application CLI v1.0.0
 Available commands:
   help        Show this help message
   config      Display current configuration
-  youtube test Test YouTube API connectivity
+  youtube     YouTube API operations (test, info, channel, etc.)
+  neon        Neon PostgreSQL database operations (backup, execute, status)
+  huggingface HuggingFace AI model operations (test, generate, embeddings)
 
 Examples:
   rag help
   rag config
   rag youtube test
+  rag neon backup
+  rag huggingface test
 
 For more information about each command, use: rag <command> --help
 """)
