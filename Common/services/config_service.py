@@ -30,6 +30,7 @@ class AppSettings(BaseSettings):
 
     # Database settings
     database_url: Optional[str] = Field(default=None, alias="DATABASE_URL")
+    neon_db_url: Optional[str] = Field(default=None, alias="NEON_DB_URL")
 
     # API settings
     api_key: Optional[str] = Field(default=None, alias="API_KEY")
@@ -68,6 +69,14 @@ class AppSettings(BaseSettings):
         """Validate database URL format."""
         if v and not (v.startswith("postgresql://") or v.startswith("sqlite://")):
             raise ValueError("Database URL must start with postgresql:// or sqlite://")
+        return v
+
+    @field_validator("neon_db_url")
+    @classmethod
+    def validate_neon_db_url(cls, v):
+        """Validate Neon database URL format."""
+        if v and not v.startswith("postgresql://"):
+            raise ValueError("Neon database URL must start with postgresql://")
         return v
 
 
@@ -121,6 +130,10 @@ class ConfigService:
     def get_database_url(self) -> Optional[str]:
         """Get database URL."""
         return self.settings.database_url
+
+    def get_neon_db_url(self) -> Optional[str]:
+        """Get Neon database URL."""
+        return self.settings.neon_db_url
 
     def get_api_config(self) -> Dict[str, Any]:
         """Get API configuration."""

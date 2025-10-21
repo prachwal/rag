@@ -45,6 +45,35 @@ api_config = config_service.get_api_config()
 is_debug = config_service.is_debug_mode()
 ```
 
+### Neon Database Service
+
+Moduł zawiera serwis do połączeń z bazami danych Neon PostgreSQL:
+
+```python
+from Common.services.neon_service import get_neon_service
+
+# Pobierz instancję serwisu
+neon_service = get_neon_service()
+
+# Sprawdź dostępność
+if neon_service.is_available():
+    # Wykonaj zapytanie
+    users = neon_service.execute_query("SELECT * FROM users")
+
+    # Wstaw dane
+    user_id = neon_service.insert_data("users", {"name": "John", "email": "john@example.com"})
+
+    # Aktualizuj dane
+    neon_service.update_data("users", {"name": "Jane"}, "id = %s", (user_id,))
+
+    # Usuń dane
+    neon_service.delete_data("users", "id = %s", (user_id,))
+
+    # Health check
+    health = neon_service.health_check()
+    print(f"Database status: {health['status']}")
+```
+
 ### YouTube API Service
 
 Moduł zawiera kompleksowy serwis do integracji z YouTube Data API v3:
