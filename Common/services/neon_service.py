@@ -82,6 +82,8 @@ class NeonDatabaseService:
         if not self.is_available():
             raise RuntimeError("Neon database service is not available. Check NEON_DB_URL configuration.")
 
+        assert self._connection_pool is not None  # Ensure pool is initialized
+
         conn = None
         try:
             conn = self._connection_pool.getconn()
@@ -151,7 +153,7 @@ class NeonDatabaseService:
         with self.get_cursor() as cursor:
             cursor.executemany(query, params_list)
 
-    def insert_data(self, table: str, data: Dict[str, Any]) -> int:
+    def insert_data(self, table: str, data: Dict[str, Any]) -> Optional[int]:
         """
         Insert a single row into a table.
 
@@ -160,7 +162,7 @@ class NeonDatabaseService:
             data: Dictionary of column-value pairs
 
         Returns:
-            ID of inserted row (if table has auto-incrementing primary key)
+            ID of inserted row (if table has auto-incrementing primary key), None if no ID returned
         """
         columns = ', '.join(data.keys())
         placeholders = ', '.join(['%s'] * len(data))
@@ -298,6 +300,159 @@ class NeonDatabaseService:
                 return {'status': 'unhealthy', 'error': 'No response from database'}
         except Exception as e:
             return {'status': 'unhealthy', 'error': str(e)}
+
+    def backup_schema(self, include_data: bool = False) -> str:
+        """
+        Create a backup of database schema and optionally data.
+
+        Args:
+            include_data: Whether to include table data in the backup
+
+        Returns:
+            SQL script as string containing schema and optionally data
+        """
+        sql_parts = []
+
+        with self.get_cursor() as cursor:
+            # Get all tables
+            cursor.execute("""
+                SELECT tablename
+                FROM pg_tables
+                WHERE schemaname = 'public'
+                ORDER BY tablename
+            """)
+            tables = [row['tablename'] for row in cursor.fetchall()]
+
+            for table in tables:
+                # Get table structure - simplified version
+                cursor.execute("""
+                    SELECT
+                        column_name,
+                        data_type,
+                        is_nullable
+                    FROM information_schema.columns
+                    WHERE table_name = %s AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                """, (table,))
+
+                columns = cursor.fetchall()
+
+                if not columns:
+                    continue  # Skip if no columns found
+
+                # Build CREATE TABLE statement - simplified
+                column_defs = []
+                for col in columns:
+                    col_def = f"{col['column_name']} {col['data_type']}"
+                    if col['is_nullable'] == 'NO':
+                        col_def += " NOT NULL"
+                    column_defs.append(col_def)
+
+                create_sql = f"CREATE TABLE {table} ({', '.join(column_defs)});"
+                sql_parts.append(create_sql)
+
+                # Skip indexes for now - they cause issues with some PostgreSQL setups
+                # TODO: Add index backup in future version
+                pass
+
+                # Add data if requested
+                if include_data:
+                    cursor.execute(f"SELECT * FROM {table}")
+                    rows = cursor.fetchall()
+
+                    if rows:
+                        # Get column names
+                        column_names = [desc[0] for desc in cursor.description]
+                        sql_parts.append(f"-- Data for table {table}")
+
+                        for row in rows:
+                            values = []
+                            for value in row:
+                                if value is None:
+                                    values.append("NULL")
+                                elif isinstance(value, str):
+                                    escaped_value = value.replace("'", "''")
+                                    values.append(f"'{escaped_value}'")
+                                elif isinstance(value, bool):
+                                    values.append("TRUE" if value else "FALSE")
+                                else:
+                                    values.append(str(value))
+
+                            sql_parts.append(f"INSERT INTO {table} ({', '.join(column_names)}) VALUES ({', '.join(values)});")
+
+        return "\n\n".join(sql_parts)
+
+    def execute_sql_from_stdin(self, sql_content: str) -> Dict[str, Any]:
+        """
+        Execute SQL commands from a string content.
+
+        Args:
+            sql_content: SQL commands as string
+
+        Returns:
+            Dictionary with execution results
+        """
+        results = {
+            'commands_executed': 0,
+            'errors': [],
+            'results': []
+        }
+
+        # Split SQL content into individual statements
+        statements = []
+        current_statement = []
+        in_string = False
+        string_char = None
+
+        for char in sql_content:
+            if not in_string:
+                if char in ("'", '"'):
+                    in_string = True
+                    string_char = char
+                elif char == ';':
+                    if current_statement:
+                        statements.append(''.join(current_statement).strip())
+                        current_statement = []
+                    continue
+            else:
+                if char == string_char and (not current_statement or current_statement[-1] != '\\'):
+                    in_string = False
+                    string_char = None
+
+            current_statement.append(char)
+
+        # Execute each statement
+        with self.get_cursor() as cursor:
+            for statement in statements:
+                if not statement.strip():
+                    continue
+
+                try:
+                    cursor.execute(statement)
+                    results['commands_executed'] += 1
+
+                    # Get results if it's a SELECT
+                    if cursor.description:
+                        rows = cursor.fetchall()
+                        results['results'].append({
+                            'statement': statement,
+                            'rows_affected': len(rows),
+                            'data': [dict(row) for row in rows]
+                        })
+                    else:
+                        results['results'].append({
+                            'statement': statement,
+                            'rows_affected': cursor.rowcount
+                        })
+
+                except Exception as e:
+                    results['errors'].append({
+                        'statement': statement,
+                        'error': str(e)
+                    })
+                    logger.error(f"SQL execution error: {e}")
+
+        return results
 
     def close_all_connections(self) -> None:
         """Close all connections in the pool."""

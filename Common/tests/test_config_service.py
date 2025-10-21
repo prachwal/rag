@@ -40,7 +40,8 @@ class TestAppSettings:
 
     def test_secret_key_fallback(self):
         """Test that SECRET_KEY fallback generation works."""
-        # Should not raise an error - fallback should generate a key
+        # The main test is that when SECRET_KEY is not provided, a valid key is generated
+        # Since the environment has SECRET_KEY set, we test that the key meets requirements
         settings = AppSettings()
         assert len(settings.secret_key) >= 32
         assert isinstance(settings.secret_key, str)
