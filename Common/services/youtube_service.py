@@ -8,6 +8,8 @@ including searching for videos, getting video details, and managing API requests
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
+import re
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -65,7 +67,7 @@ class YouTubeAPIService:
             raise Exception(f"YouTube API request failed: {e}")
 
     def search_videos(self, query: str, max_results: int = 10,
-                     order: str = "relevance", published_after: Optional[str] = None) -> List[Dict[str, Any]]:
+                      order: str = "relevance", published_after: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Search for videos on YouTube.
 
@@ -234,6 +236,129 @@ class YouTubeAPIService:
 
         return videos
 
+    def extract_video_id(self, video_input: str) -> str:
+        """
+        Extract video ID from various YouTube URL formats or return the ID if already provided.
+
+        Args:
+            video_input: YouTube video ID or full URL
+
+        Returns:
+            YouTube video ID
+
+        Raises:
+            ValueError: If video ID cannot be extracted
+        """
+        # If it's already a video ID (11 characters, alphanumeric + hyphens/underscores)
+        if re.match(r'^[a-zA-Z0-9_-]{11}$', video_input):
+            return video_input
+
+        # Try to extract from URL
+        try:
+            parsed = urlparse(video_input)
+            if 'youtube.com' in parsed.netloc or 'youtu.be' in parsed.netloc:
+                if parsed.netloc == 'youtu.be':
+                    # youtu.be/VIDEO_ID
+                    path_parts = parsed.path.strip('/').split('/')
+                    if path_parts and len(path_parts[0]) == 11:
+                        return path_parts[0]
+                elif parsed.path.startswith('/watch'):
+                    # youtube.com/watch?v=VIDEO_ID
+                    query_params = parse_qs(parsed.query)
+                    if 'v' in query_params and query_params['v']:
+                        video_id = query_params['v'][0]
+                        if len(video_id) == 11:
+                            return video_id
+                elif '/embed/' in parsed.path:
+                    # youtube.com/embed/VIDEO_ID
+                    path_parts = parsed.path.split('/embed/')
+                    if len(path_parts) > 1:
+                        video_id = path_parts[1].split('/')[0]
+                        if len(video_id) == 11:
+                            return video_id
+                elif '/v/' in parsed.path:
+                    # youtube.com/v/VIDEO_ID (old format)
+                    path_parts = parsed.path.split('/v/')
+                    if len(path_parts) > 1:
+                        video_id = path_parts[1].split('/')[0]
+                        if len(video_id) == 11:
+                            return video_id
+        except Exception:
+            pass
+
+        raise ValueError(f"Could not extract valid YouTube video ID from: {video_input}")
+
+    def get_video_info(self, video_input: str) -> Dict[str, Any]:
+        """
+        Get detailed information about a single YouTube video.
+
+        Args:
+            video_input: YouTube video ID or full URL
+
+        Returns:
+            Video information dictionary
+        """
+        video_id = self.extract_video_id(video_input)
+        videos = self.get_video_details([video_id])
+        if not videos:
+            raise ValueError(f"Video with ID {video_id} not found")
+        return videos[0]
+
+    def extract_channel_id(self, channel_input: str) -> str:
+        """
+        Extract channel ID from various YouTube channel URL formats or return the ID if already provided.
+
+        Args:
+            channel_input: YouTube channel ID or full URL
+
+        Returns:
+            YouTube channel ID
+
+        Raises:
+            ValueError: If channel ID cannot be extracted
+        """
+        # If it's already a channel ID (starts with UC and 24 characters)
+        if re.match(r'^UC[a-zA-Z0-9_-]{22}$', channel_input):
+            return channel_input
+
+        # Try to extract from URL
+        try:
+            parsed = urlparse(channel_input)
+            if 'youtube.com' in parsed.netloc:
+                path_parts = parsed.path.strip('/').split('/')
+                if len(path_parts) >= 2:
+                    if path_parts[0] == 'channel':
+                        # youtube.com/channel/CHANNEL_ID
+                        channel_id = path_parts[1]
+                        if re.match(r'^UC[a-zA-Z0-9_-]{22}$', channel_id):
+                            return channel_id
+                    elif path_parts[0] == 'user':
+                        # youtube.com/user/USERNAME - this would need additional API call to resolve
+                        # For now, we'll raise an error as we can't resolve usernames without API
+                        raise ValueError("Username-based channel URLs are not supported. Please use channel ID or /c/ custom URL.")
+                    elif path_parts[0] == 'c' or path_parts[0] == 'user':
+                        # youtube.com/c/CUSTOM_NAME or youtube.com/user/USERNAME
+                        # These require additional API calls to resolve, which is complex
+                        # For simplicity, we'll require direct channel IDs
+                        raise ValueError("Custom channel URLs require additional resolution. Please use the direct channel ID (starts with 'UC').")
+        except Exception:
+            pass
+
+        raise ValueError(f"Could not extract valid YouTube channel ID from: {channel_input}")
+
+    def get_channel_details(self, channel_input: str) -> Dict[str, Any]:
+        """
+        Get detailed information about a single YouTube channel.
+
+        Args:
+            channel_input: YouTube channel ID or URL
+
+        Returns:
+            Channel information dictionary
+        """
+        channel_id = self.extract_channel_id(channel_input)
+        return self.get_channel_info(channel_id)
+
 
 # Global YouTube service instance - lazy initialization
 class _YouTubeServiceLazy:
@@ -286,3 +411,29 @@ def get_youtube_video_details(video_ids: List[str]) -> List[Dict[str, Any]]:
         List of video details
     """
     return youtube_service.get_video_details(video_ids)
+
+
+def get_youtube_video_info(video_input: str) -> Dict[str, Any]:
+    """
+    Convenience function to get YouTube video information.
+
+    Args:
+        video_input: YouTube video ID or full URL
+
+    Returns:
+        Video information dictionary
+    """
+    return youtube_service.get_video_info(video_input)
+
+
+def get_youtube_channel_info(channel_input: str) -> Dict[str, Any]:
+    """
+    Convenience function to get YouTube channel information.
+
+    Args:
+        channel_input: YouTube channel ID or URL
+
+    Returns:
+        Channel information dictionary
+    """
+    return youtube_service.get_channel_details(channel_input)
